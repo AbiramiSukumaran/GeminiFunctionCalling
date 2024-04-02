@@ -60,7 +60,7 @@ update the API_KEY and projectId variables in the code before executing the prog
 */
 public class HelloWorld implements HttpFunction {
   public static String API_STRING = "https://maps.googleapis.com/maps/api/geocode/json";
-  public static String API_KEY = "YOUR_GEOCODING_API_KEY";
+  public static String API_KEY = "YOUR_API_KEY";
   public static Gson gson = new Gson();
   @Override
   public void service(HttpRequest request, HttpResponse response) throws Exception {
@@ -124,52 +124,29 @@ public class HelloWorld implements HttpFunction {
           .setTools(Arrays.asList(tool))
           .build();
       GenerateContentResponse response = model.generateContent(promptText);
-      String responseJSON = ResponseHandler.getContent(response).toString();
-      
-      // Convert responseJSON to JSON format and extract the items into a map named "params"
-      String input = responseJSON;
-      
-      // Remove the leading "role: "model"" part
-      input = input.substring(input.indexOf("{") + 1);
-      input = input.replace("function_call {", "");
-      
-      /* This is for test.
-      input = //"fields": {  "key": "latlng"  , "value": {  "string_value": "40.714224,-73.961452"  } } 
-      "{ fields { key: \"latlng\"  value { string_value: \"40.714224,-73.961452\" }  } fields { key: \"test\" value { string_value: \"testvalue\" } } }";
-      */
+      Content responseJSONCnt = response.getCandidates(0).getContent();
+      Part functionResponse = responseJSONCnt.getParts(0);
+      String key = "";
+      String val = "";
 
-      /* Keep only the part of the response enclosed within the args{...} object */
-      input = input.substring(input.indexOf("{"));
-      
-      /* Format the object as a JSON and match the close curly braces to the open ones */
-      input = input.replace("fields", "\"fields\": ").replace("key:", "\"key\":").replace("value {", ", \"value\": {")
-          .replace("string_value", "\"string_value\"");
-      String str = input;
-      int countOpen = str.length() - str.replace("{", "").length();
-      int countClose = str.length() - str.replace("}", "").length();
-      for (int i = 0; i < countClose - countOpen; i++) {
-        input = input.substring(0, input.lastIndexOf("}"));
-      }
-      
-      /* Fetch the kay-value pairs from within the object fields {...} and store in a String[] Array */
-      String modifiedResponseJSON = input.trim();      
-      modifiedResponseJSON = modifiedResponseJSON.substring(1, modifiedResponseJSON.length()-2).trim();
-      String[] responseJSONArray = modifiedResponseJSON.split("\"fields\":");
-      String params = "";
-      
-      
-      /* Process the Key-Value pairs to form the params */
-      for(int i = 0; i < responseJSONArray.length; i++){
-        if(!(responseJSONArray[i].equals(null)) && !(responseJSONArray[i].equals(""))){
-          System.out.println(" responseJSONArray string: " + responseJSONArray[i].toString());
-          Map<String, Object> map = gson.fromJson(responseJSONArray[i].trim(), Map.class);
-        // Extract the value of the parameter's key
-          String key = map.get("key").toString();
-          String temp = map.get("value").toString();
-          temp = temp.substring("{string_value=".length(), temp.length() - 1);
-          params = params + "&" + key + "=" + temp;
+      if (functionResponse.hasFunctionCall()) {
+        FunctionCall functionCall = functionResponse.getFunctionCall();
+        if (functionCall.hasArgs()) {
+          com.google.protobuf.Struct args = functionCall.getArgs();
+          Map<String, com.google.protobuf.Value> fields = args.getFieldsMap();
+          String latlng = fields.get("latlng").getStringValue();
+          for (Map.Entry<String, com.google.protobuf.Value> entry : fields.entrySet()) {
+            key = entry.getKey();
+            com.google.protobuf.Value value = entry.getValue();
+          }      
+          val = latlng;
+          System.out.println("kay and val: " + key + " : " + val);
         }
       }
+     
+   
+      String params = "";
+      params = params + "&" + key + "=" + val;
       
       /* API invocation code begins here.
       Invoke the API in the string "API_STRING" appended with the 
@@ -206,7 +183,7 @@ public class HelloWorld implements HttpFunction {
       String promptString = 
       "You are an AI address standardizer for assisting with standardizing addresses accurately. Your job is to give the accurate address in the standard format as a JSON object containing the fields DOOR_NUMBER, STREET_ADDRESS, AREA, CITY, TOWN, COUNTY, STATE, COUNTRY, ZIPCODE, LANDMARK by leveraging the address string that follows in the end. Remember the response cannot be empty or null. ";
 
-Content content =
+  Content content =
           ContentMaker.fromMultiModalData(
               PartMaker.fromFunctionResponse(
                   "getAddress",
