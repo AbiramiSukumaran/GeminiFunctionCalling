@@ -22,7 +22,9 @@ High Level Architecture Diagram
 ![image](https://github.com/AbiramiSukumaran/GeminiFunctionCalling/assets/13735898/44a07c0e-8eee-4078-a56e-21f4817d1880)
 
 
-## Let’s understand Function Calling by breaking down this class:
+## Let’s understand Function Calling by breaking down the class HelloWorld.java:
+
+For this to work, you must update API_KEY and project_id with your geocoding API Key and Google Cloud Project ID respectively.
 
 ### Prompt Input:
 In this example, this is what the input prompt looks like: 
